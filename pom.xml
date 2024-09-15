@@ -29,12 +29,4 @@
         </dependency>
     </dependencies>
 
-    <distributionManagement>
-        <repository>
-            <id>github</id>
-            <name>GitHub Packages</name>
-            <url>https://maven.pkg.github.com/alexderprogamer/packetquery</url>
-        </repository>
-    </distributionManagement>
-
 </project>
