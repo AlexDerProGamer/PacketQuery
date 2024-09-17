@@ -1,7 +1,7 @@
 package adpg.packetquery.query.client;
 
 import adpg.packetquery.PacketQuery;
-import adpg.packetquery.logger.LoggingUtil;
+import adpg.packetquery.logger.QueryLogger;
 import adpg.packetquery.packet.Packet;
 import adpg.packetquery.packet.PacketBuilder;
 import adpg.packetquery.packet.PacketSerializer;
@@ -38,9 +38,9 @@ public class Client {
             );
             channel.writeAndFlush(serializedNamePacket + "\r\n");
 
-            LoggingUtil.info("Started Client on port " + port + " with name \"" + name + "\"");
+            QueryLogger.info("Started Client on port " + port + " with name \"" + name + "\"");
         } catch (InterruptedException e) {
-            LoggingUtil.error("An error occurred, please report it: " + LoggingUtil.link);
+            QueryLogger.error("An error occurred, please report it: " + QueryLogger.link);
             e.getCause().printStackTrace();
         }
     }
@@ -52,7 +52,7 @@ public class Client {
         channel.writeAndFlush(PacketSerializer.toString(packet) + "\r\n");
 
         if(PacketQuery.isDebugEnabled()){
-            LoggingUtil.info("Sent a packet to the Server: \n" + PacketSerializer.toString(packet));
+            QueryLogger.info("Sent a packet to the Server: \n" + PacketSerializer.toString(packet));
         }
     }
 
@@ -63,7 +63,7 @@ public class Client {
         channel.close();
         group.shutdownGracefully();
 
-        LoggingUtil.info("Stopped Client");
+        QueryLogger.info("Stopped Client");
     }
 
 }

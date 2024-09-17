@@ -1,7 +1,7 @@
 package adpg.packetquery.query.client;
 
 import adpg.packetquery.PacketQuery;
-import adpg.packetquery.logger.LoggingUtil;
+import adpg.packetquery.logger.QueryLogger;
 import adpg.packetquery.packet.Packet;
 import adpg.packetquery.packet.PacketSerializer;
 import io.netty.channel.ChannelHandlerContext;
@@ -15,7 +15,7 @@ public class ClientHandler extends SimpleChannelInboundHandler<String> {
         //packet handling
         Packet packet = PacketSerializer.fromString(message);
         if(PacketQuery.isDebugEnabled()){
-            LoggingUtil.info("Server sent the Client a packet: \n" + PacketSerializer.toString(packet));
+            QueryLogger.info("Server sent the Client a packet: \n" + PacketSerializer.toString(packet));
         }
 
         PacketQuery.fireServerMessageEvent(packet);
@@ -25,7 +25,7 @@ public class ClientHandler extends SimpleChannelInboundHandler<String> {
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
         //super.exceptionCaught(ctx, cause);
         ctx.close();
-        LoggingUtil.error("An error occurred, please report it: " + LoggingUtil.link);
+        QueryLogger.error("An error occurred, please report it: " + QueryLogger.link);
         cause.printStackTrace();
     }
 

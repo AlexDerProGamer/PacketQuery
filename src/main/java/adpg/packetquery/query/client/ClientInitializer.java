@@ -1,6 +1,6 @@
 package adpg.packetquery.query.client;
 
-import adpg.packetquery.logger.LoggingUtil;
+import adpg.packetquery.logger.QueryLogger;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
@@ -28,7 +28,7 @@ public class ClientInitializer extends ChannelInitializer<SocketChannel> {
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
         //super.exceptionCaught(ctx, cause);
         ctx.close();
-        LoggingUtil.error("An error occurred, please report it: " + LoggingUtil.link);
+        QueryLogger.error("An error occurred, please report it: " + QueryLogger.link);
         cause.printStackTrace();
     }
 

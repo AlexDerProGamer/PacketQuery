@@ -1,7 +1,7 @@
 package adpg.packetquery.query.server;
 
 import adpg.packetquery.PacketQuery;
-import adpg.packetquery.logger.LoggingUtil;
+import adpg.packetquery.logger.QueryLogger;
 import adpg.packetquery.packet.Packet;
 import adpg.packetquery.packet.PacketSerializer;
 import io.netty.bootstrap.ServerBootstrap;
@@ -31,9 +31,9 @@ public class Server {
                     .childHandler(new ServerInitializer());
 
             bootstrap.bind(port).sync();
-            LoggingUtil.info("Started Server on port " + port);
+            QueryLogger.info("Started Server on port " + port);
         } catch (InterruptedException e) {
-            LoggingUtil.error("An error occurred, please report it: " + LoggingUtil.link);
+            QueryLogger.error("An error occurred, please report it: " + QueryLogger.link);
             e.getCause().printStackTrace();
         }
     }
@@ -57,7 +57,7 @@ public class Server {
         ServerHandler.sendPacketToClient(clientName, packet);
 
         if(PacketQuery.isDebugEnabled()){
-            LoggingUtil.info("Sent a packet to the Client named \"" + clientName + "\" [" + ServerHandler.clients.get(clientName).remoteAddress() + "]: \n" + PacketSerializer.toString(packet));
+            QueryLogger.info("Sent a packet to the Client named \"" + clientName + "\" [" + ServerHandler.clients.get(clientName).remoteAddress() + "]: \n" + PacketSerializer.toString(packet));
         }
     }
 
@@ -78,7 +78,7 @@ public class Server {
         bossGroup.shutdownGracefully();
         workerGroup.shutdownGracefully();
 
-        LoggingUtil.info("Stopping Server...");
+        QueryLogger.info("Stopping Server...");
     }
 
 }

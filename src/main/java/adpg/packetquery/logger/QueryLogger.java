@@ -3,10 +3,10 @@ package adpg.packetquery.logger;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
-import static adpg.packetquery.logger.LoggingUtil.ConsoleColors.*;
+import static adpg.packetquery.logger.QueryLogger.ConsoleColors.*;
 
 @SuppressWarnings("unused")
-public class LoggingUtil {
+public class QueryLogger {
 
     public static final String link = "https://github.com/AlexDerProGamer/PacketQuery/issues";
 

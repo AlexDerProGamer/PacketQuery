@@ -1,6 +1,6 @@
 package adpg.packetquery.packet;
 
-import adpg.packetquery.logger.LoggingUtil;
+import adpg.packetquery.logger.QueryLogger;
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -20,7 +20,7 @@ public class PacketSerializer {
         try {
             serializedPacket = mapper.writeValueAsString(packet);
         } catch (JsonProcessingException e) {
-            LoggingUtil.error("An error occurred, please report it: " + LoggingUtil.link);
+            QueryLogger.error("An error occurred, please report it: " + QueryLogger.link);
             e.getCause().printStackTrace();
         }
 
@@ -36,7 +36,7 @@ public class PacketSerializer {
         try {
             packet = mapper.readValue(serializedPacket, Packet.class);
         } catch (JsonProcessingException e) {
-            LoggingUtil.error("An error occurred, please report it: " + LoggingUtil.link);
+            QueryLogger.error("An error occurred, please report it: " + QueryLogger.link);
             e.getCause().printStackTrace();
         }
 

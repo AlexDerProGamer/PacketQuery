@@ -1,7 +1,7 @@
 package adpg.packetquery.query.server;
 
 import adpg.packetquery.PacketQuery;
-import adpg.packetquery.logger.LoggingUtil;
+import adpg.packetquery.logger.QueryLogger;
 import adpg.packetquery.packet.Packet;
 import adpg.packetquery.packet.PacketSerializer;
 import io.netty.channel.Channel;
@@ -34,7 +34,7 @@ public class ServerHandler extends SimpleChannelInboundHandler<String> {
         Channel client = context.channel();
         waiting.put(client, client.remoteAddress().toString());
         if(PacketQuery.isDebugEnabled()){
-            LoggingUtil.info("New Client with Address " + client.remoteAddress() + " connected to the Server, waiting for name...");
+            QueryLogger.info("New Client with Address " + client.remoteAddress() + " connected to the Server, waiting for name...");
         }
     }
 
@@ -43,7 +43,7 @@ public class ServerHandler extends SimpleChannelInboundHandler<String> {
         Channel client = context.channel();
         String name = getClientNameByChannel(client);
 
-        LoggingUtil.info("Client named \"" + name + "\" [" + client.remoteAddress() + "] disconnected");
+        QueryLogger.info("Client named \"" + name + "\" [" + client.remoteAddress() + "] disconnected");
 
         client.close();
         clients.remove(getClientNameByChannel(client));
@@ -61,29 +61,29 @@ public class ServerHandler extends SimpleChannelInboundHandler<String> {
 
                 if(clients.containsKey(name)){
                     client.close();
-                    LoggingUtil.error("New Client with Address " + client.remoteAddress() + " provided the same name as Client with Address " + clients.get(name).remoteAddress() + " (\"" + name + "\"), disconnecting");
+                    QueryLogger.error("New Client with Address " + client.remoteAddress() + " provided the same name as Client with Address " + clients.get(name).remoteAddress() + " (\"" + name + "\"), disconnecting");
                 }else if(clients.containsValue(client)){
                     client.close();
-                    LoggingUtil.error("New Client with Address " + client.remoteAddress() + " tried to connect but is already connected, disconnecting!");
+                    QueryLogger.error("New Client with Address " + client.remoteAddress() + " tried to connect but is already connected, disconnecting!");
                 }else{
                     if(PacketQuery.isDebugEnabled()){
-                        LoggingUtil.info("Received name for Client with Address " + client.remoteAddress() + ": \"" + name + "\"");
+                        QueryLogger.info("Received name for Client with Address " + client.remoteAddress() + ": \"" + name + "\"");
                     }
 
-                    LoggingUtil.info("New Client named \"" + name + "\" [" + client.remoteAddress() + "] connected to the Server");
+                    QueryLogger.info("New Client named \"" + name + "\" [" + client.remoteAddress() + "] connected to the Server");
                     clients.put(name, client);
                 }
 
                 waiting.remove(client);
             }else{
-                LoggingUtil.error("New Client with Address " + client.remoteAddress() + " didn't send a name packet, disconnecting!");
+                QueryLogger.error("New Client with Address " + client.remoteAddress() + " didn't send a name packet, disconnecting!");
             }
         }else if(clients.containsValue(client)){
             //packet handling
             String clientName = getClientNameByChannel(client);
 
             if(PacketQuery.isDebugEnabled()){
-                LoggingUtil.info("Client named \"" + clientName + "\" [" + client.remoteAddress() + "] sent the Server a packet: \n" + PacketSerializer.toString(packet));
+                QueryLogger.info("Client named \"" + clientName + "\" [" + client.remoteAddress() + "] sent the Server a packet: \n" + PacketSerializer.toString(packet));
             }
 
             PacketQuery.fireClientMessageEvent(clientName, packet);
@@ -94,7 +94,7 @@ public class ServerHandler extends SimpleChannelInboundHandler<String> {
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
         //super.exceptionCaught(ctx, cause);
         ctx.close();
-        LoggingUtil.error("An error occurred, please report it: " + LoggingUtil.link);
+        QueryLogger.error("An error occurred, please report it: " + QueryLogger.link);
         cause.printStackTrace();
     }
 
@@ -109,7 +109,7 @@ public class ServerHandler extends SimpleChannelInboundHandler<String> {
                 client.writeAndFlush(PacketSerializer.toString(packet) + "\r\n");
 
                 if(PacketQuery.isDebugEnabled()){
-                    LoggingUtil.info("Server sent the Client named \"" + clientName + "\" [" + client.remoteAddress() + "] a packet: \n" + PacketSerializer.toString(packet));
+                    QueryLogger.info("Server sent the Client named \"" + clientName + "\" [" + client.remoteAddress() + "] a packet: \n" + PacketSerializer.toString(packet));
                 }
             }else{
                 client.close();
@@ -142,7 +142,7 @@ public class ServerHandler extends SimpleChannelInboundHandler<String> {
                 try {
                     Thread.sleep(3000);
                 } catch (InterruptedException e) {
-                    LoggingUtil.error("An error occurred, please report it: " + LoggingUtil.link);
+                    QueryLogger.error("An error occurred, please report it: " + QueryLogger.link);
                     e.getCause().printStackTrace();
                 }
 
