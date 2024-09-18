@@ -7,6 +7,7 @@ import adpg.packetquery.packet.PacketBuilder;
 import adpg.packetquery.packet.PacketSerializer;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
@@ -29,7 +30,12 @@ public class Client {
                     .channel(NioSocketChannel.class)
                     .handler(new ClientInitializer());
 
-            channel = bootstrap.connect("localhost", port).sync().channel();
+            ChannelFuture future = bootstrap.connect("localhost", port);
+            if(!future.isSuccess()){
+                QueryLogger.error("Can't connect to Server: No Server running on the port " + port);
+                return;
+            }
+            channel = future.sync().channel();
 
             String serializedNamePacket = PacketSerializer.toString(new PacketBuilder()
                     .write("socketquery.client.name")

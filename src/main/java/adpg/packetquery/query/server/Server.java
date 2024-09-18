@@ -51,6 +51,7 @@ public class Server {
      */
     public void sendPacketToClient(String clientName, Packet packet){
         if(!ServerHandler.clients.containsKey(clientName)){
+            QueryLogger.warn("There is no client named \"" + clientName + "\" connected, not sending packet:\n" + PacketSerializer.toString(packet));
             return;
         }
 
