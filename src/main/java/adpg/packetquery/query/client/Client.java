@@ -12,6 +12,8 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 
+import java.net.ConnectException;
+
 @SuppressWarnings({"unused", "CallToPrintStackTrace"})
 public class Client {
 
@@ -31,10 +33,7 @@ public class Client {
                     .handler(new ClientInitializer());
 
             ChannelFuture future = bootstrap.connect("localhost", port);
-            if(!future.isSuccess()){
-                QueryLogger.error("Can't connect to Server: No Server running on the port " + port);
-                return;
-            }
+
             channel = future.sync().channel();
 
             String serializedNamePacket = PacketSerializer.toString(new PacketBuilder()
@@ -45,9 +44,14 @@ public class Client {
             channel.writeAndFlush(serializedNamePacket + "\r\n");
 
             QueryLogger.info("Started Client on port " + port + " with name \"" + name + "\"");
-        } catch (InterruptedException e) {
-            QueryLogger.error("An error occurred, please report it: " + QueryLogger.link);
-            e.getCause().printStackTrace();
+        } catch (Exception e) {
+            //noinspection ConstantValue
+            if(e instanceof ConnectException){
+                QueryLogger.error("Can't connect to Server: No Server running on the port " + port);
+            }else{
+                QueryLogger.error("Can't connect to Server: No Server running on the port " + port);
+                e.getCause().printStackTrace();
+            }
         }
     }
 
