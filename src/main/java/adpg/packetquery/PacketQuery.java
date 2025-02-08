@@ -5,72 +5,66 @@ import adpg.packetquery.event.ServerPacketMessageEvent;
 import adpg.packetquery.packet.Packet;
 import adpg.packetquery.query.client.Client;
 import adpg.packetquery.query.server.Server;
+import org.jetbrains.annotations.ApiStatus;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 
-@SuppressWarnings({"unused", "JavadocDeclaration"})
 public class PacketQuery {
 
-    private static boolean debug = false;
-    private static final ArrayList<ServerPacketMessageEvent> serverListeners = new ArrayList<>();
-    private static final ArrayList<ClientPacketMessageEvent> clientListeners = new ArrayList<>();
+    public static final Logger LOGGER = LoggerFactory.getLogger(PacketQuery.class);
 
-    public static void enableDebugMessages(boolean enable){
-        debug = enable;
+    private static boolean DEBUG = false;
+    private static final ArrayList<ServerPacketMessageEvent> SERVER_LISTENERS = new ArrayList<>();
+    private static final ArrayList<ClientPacketMessageEvent> CLIENT_LISTENERS = new ArrayList<>();
+
+    public static boolean isDebugEnabled() {
+        return DEBUG;
     }
 
-    public static boolean isDebugEnabled(){
-        return debug;
+    public static void enableDebug(boolean enable) {
+        DEBUG = enable;
     }
 
     /**
-     * Use this method, to initialize this instance as the Server
-     * @apiNote Do NOT use {@link #initServer(int) initServer} and {@link #initClient(String, int) initClient} at the same time!<br>
+     * Initializes this instance as the server
+     * @apiNote Do NOT use {@link #initServer(int)} and {@link #initClient(String, int)} at the same time!<br>
      * Only call this method ONCE
      */
-    public static Server initServer(int port){
+    public static Server initServer(int port) {
         return new Server(port);
     }
 
     /**
-     * Use this method, to initialize this instance as the Client
-     * @apiNote Do NOT use {@link #initServer(int) initServer} and {@link #initClient(String, int) initClient} at the same time!<br>
+     * Initializes this instance as the client
+     * @apiNote Do NOT use {@link #initServer(int)} and {@link #initClient(String, int)} at the same time!<br>
      * Only call this method ONCE
      */
-    public static Client initClient(String name, int port){
+    public static Client initClient(String name, int port) {
         return new Client(name, port);
     }
 
-    /**
-     * Register your {@link ServerPacketMessageEvent ServerPacketMessageEvent} listener
-     */
-    public static void addServerMessageListener(ServerPacketMessageEvent listener){
-        serverListeners.add(listener);
+    /// Registers your {@link ServerPacketMessageEvent} listener
+    public static void addServerMessageListener(ServerPacketMessageEvent listener) {
+        SERVER_LISTENERS.add(listener);
     }
 
-    /**
-     * Register your {@link ClientPacketMessageEvent ClientPacketMessageEvent} listener
-     */
-    public static void addClientMessageListener(ClientPacketMessageEvent listener){
-        clientListeners.add(listener);
+    /// Registers your {@link ClientPacketMessageEvent} listener
+    public static void addClientMessageListener(ClientPacketMessageEvent listener) {
+        CLIENT_LISTENERS.add(listener);
     }
 
-    /**
-     * @apiNote Made for internal use, no need to call this method
-     */
-    public static void fireServerMessageEvent(Packet packet){
-        for(ServerPacketMessageEvent listener : serverListeners){
-            listener.onServerMessageReceive(packet);
-        }
+    /// This is made for internal usage but can be used to manipulate events
+    @ApiStatus.Internal
+    public static void fireServerMessageEvent(Packet packet) {
+        SERVER_LISTENERS.forEach(listener -> listener.onServerMessageReceive(packet));
     }
 
-    /**
-     * @apiNote Made for internal use, no need to call this method
-     */
-    public static void fireClientMessageEvent(String clientName, Packet packet){
-        for(ClientPacketMessageEvent listener : clientListeners){
-            listener.onClientMessageReceive(clientName, packet);
-        }
+    /// This is made for internal usage but can be used to manipulate events
+    @ApiStatus.Internal
+    public static void fireClientMessageEvent(String client, Packet packet) {
+        CLIENT_LISTENERS.forEach(listener -> listener.onClientMessageReceive(client, packet));
     }
 
 }

@@ -1,155 +1,174 @@
 package adpg.packetquery.query.server;
 
 import adpg.packetquery.PacketQuery;
-import adpg.packetquery.logger.QueryLogger;
 import adpg.packetquery.packet.Packet;
 import adpg.packetquery.packet.PacketSerializer;
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.SimpleChannelInboundHandler;
+import io.netty.channel.*;
+import org.jetbrains.annotations.Nullable;
 
+import java.net.SocketAddress;
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
-@SuppressWarnings({"unused", "RedundantThrows", "CallToPrintStackTrace"})
+import static adpg.packetquery.PacketQuery.LOGGER;
+
+@ChannelHandler.Sharable
 public class ServerHandler extends SimpleChannelInboundHandler<String> {
 
-    public static final HashMap<Channel, String> waiting = new HashMap<>();
-    public static final HashMap<String, Channel> clients = new HashMap<>();
+    public Boolean RUNNING = true;
+    public final HashMap<Channel, SocketAddress> QUEUED_CLIENTS = new HashMap<>();
+    public final HashMap<String, Channel> CONNECTED_CLIENTS = new HashMap<>();
 
-    private String getClientNameByChannel(Channel channel){
-        for(String name : clients.keySet()){
-            //no need for a null check
-            if(clients.get(name) == channel){
+    @Nullable
+    private String getClientNameByChannel(Channel channel) {
+        HashMap<String, Channel> clients = CONNECTED_CLIENTS;
+
+        for (String name : clients.keySet()) {
+            if (clients.get(name).equals(channel)) {
                 return name;
             }
         }
 
-        return "N/A";
+        return null;
     }
 
     @Override
-    public void handlerAdded(ChannelHandlerContext context) throws Exception {
+    public void exceptionCaught(ChannelHandlerContext context, Throwable cause) throws Exception {
         Channel client = context.channel();
-        waiting.put(client, client.remoteAddress().toString());
-        if(PacketQuery.isDebugEnabled()){
-            QueryLogger.info("New Client with Address " + client.remoteAddress() + " connected to the Server, waiting for name...");
+        if (CONNECTED_CLIENTS.containsValue(client)) {
+            //a client lost connection without properly disconnecting
+            String name = getClientNameByChannel(client);
+            LOGGER.warn("Client \"{}\" ({}) lost connection and did not disconnect properly", name, client.remoteAddress());
+            //we do not need to remove the client from the list because that will happen in the handlerRemoved method
+            context.close();
+        } else {
+            super.exceptionCaught(context, cause);
         }
     }
 
     @Override
-    public void handlerRemoved(ChannelHandlerContext context) throws Exception {
+    public void handlerAdded(ChannelHandlerContext context) {
         Channel client = context.channel();
-        String name = getClientNameByChannel(client);
+        QUEUED_CLIENTS.put(client, client.remoteAddress());
 
-        QueryLogger.info("Client named \"" + name + "\" [" + client.remoteAddress() + "] disconnected");
+        if (PacketQuery.isDebugEnabled()) {
+            LOGGER.info("New Client ({}) connected, waiting for name packet...", client.remoteAddress());
+        }
 
-        client.close();
-        clients.remove(getClientNameByChannel(client));
+        QUEUED_CLIENTS.put(client, client.remoteAddress());
     }
 
     @Override
-    protected void channelRead0(ChannelHandlerContext context, String message) throws Exception {
+    public void handlerRemoved(ChannelHandlerContext context) {
+        if (RUNNING) {
+            Channel client = context.channel();
+            String name = getClientNameByChannel(client);
+
+            LOGGER.info("Client \"{}\" ({}) disconnected", name, client.remoteAddress());
+
+            client.close();
+            CONNECTED_CLIENTS.remove(name);
+        }
+    }
+
+    private void processNamePacket(Channel client, Packet packet) {
+        String field = packet.read();
+        String name = packet.read();
+        SocketAddress remoteAddress = client.remoteAddress();
+
+        if (field != null && field.equals("packetquery.client.name")) {
+            if (name != null) {
+                if (!CONNECTED_CLIENTS.containsKey(name)) {
+                    //everything is correct, register client
+                    if (PacketQuery.isDebugEnabled()) {
+                        LOGGER.info("Received name for client \"{}\" ({})", name, remoteAddress);
+                    }
+
+                    LOGGER.info("New client \"{}\" ({}) connected to the server", name, remoteAddress);
+                    QUEUED_CLIENTS.remove(client);
+                    CONNECTED_CLIENTS.put(name, client);
+                } else {
+                    QUEUED_CLIENTS.remove(client);
+                    client.close();
+                    LOGGER.error("Client ({}) provided the same name as \"{}\" ({}), disconnecting", remoteAddress, name, CONNECTED_CLIENTS.get(name).remoteAddress());
+                }
+            } else {
+                QUEUED_CLIENTS.remove(client);
+                client.close();
+                LOGGER.error("Client ({}) did not specify a name in the packet, disconnecting", remoteAddress);
+            }
+        } else {
+            QUEUED_CLIENTS.remove(client);
+            client.close();
+            LOGGER.error("Client ({}) did not send a name packet, disconnecting", remoteAddress);
+        }
+    }
+
+    @Override
+    protected void channelRead0(ChannelHandlerContext context, String message) {
         Channel client = context.channel();
         Packet packet = PacketSerializer.fromString(message);
 
-        //name packet handling/client registration
-        if(waiting.containsKey(client)){
-            if(packet.read().equals("socketquery.client.name")){
-                String name = packet.read();
+        if (QUEUED_CLIENTS.containsKey(client)) {
+            //register client & receive name packet
+            processNamePacket(client, packet);
+        } else if (CONNECTED_CLIENTS.containsValue(client)) {
+            //process packet
+            String name = getClientNameByChannel(client);
 
-                if(clients.containsKey(name)){
-                    client.close();
-                    QueryLogger.error("New Client with Address " + client.remoteAddress() + " provided the same name as Client with Address " + clients.get(name).remoteAddress() + " (\"" + name + "\"), disconnecting");
-                }else if(clients.containsValue(client)){
-                    client.close();
-                    QueryLogger.error("New Client with Address " + client.remoteAddress() + " tried to connect but is already connected, disconnecting!");
-                }else{
-                    if(PacketQuery.isDebugEnabled()){
-                        QueryLogger.info("Received name for Client with Address " + client.remoteAddress() + ": \"" + name + "\"");
-                    }
-
-                    QueryLogger.info("New Client named \"" + name + "\" [" + client.remoteAddress() + "] connected to the Server");
-                    clients.put(name, client);
-                }
-
-                waiting.remove(client);
-            }else{
-                QueryLogger.error("New Client with Address " + client.remoteAddress() + " didn't send a name packet, disconnecting!");
-            }
-        }else if(clients.containsValue(client)){
-            //packet handling
-            String clientName = getClientNameByChannel(client);
-
-            if(PacketQuery.isDebugEnabled()){
-                QueryLogger.info("Client named \"" + clientName + "\" [" + client.remoteAddress() + "] sent the Server a packet: \n" + PacketSerializer.toString(packet));
+            if (PacketQuery.isDebugEnabled()) {
+                LOGGER.info("Client \"{}\" ({}) sent a packet: {}", name, client.remoteAddress(), message);
             }
 
-            PacketQuery.fireClientMessageEvent(clientName, packet);
+            PacketQuery.fireClientMessageEvent(name, packet);
         }
     }
 
-    @Override
-    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-        //super.exceptionCaught(ctx, cause);
-        ctx.close();
-        QueryLogger.error("An error occurred, please report it: " + QueryLogger.link);
-        cause.printStackTrace();
-    }
+    public boolean sendPacketToClient(String name, Packet packet) {
+        Channel client = CONNECTED_CLIENTS.get(name);
+        if (client == null) {
+            throw new NullPointerException("Channel of client \"" + name + "\" is null");
+        }
 
-    /**
-     * @apiNote Made for internal use, no need to call this method
-     * @see Server#sendPacketToClient(String, Packet) Server.sendPacketToClient()
-     */
-    public static void sendPacketToClient(String clientName, Packet packet){
-        Channel client = clients.get(clientName);
-        if(client != null){
-            if(client.isOpen() && client.isWritable()){
-                client.writeAndFlush(PacketSerializer.toString(packet) + "\r\n");
-
-                if(PacketQuery.isDebugEnabled()){
-                    QueryLogger.info("Server sent the Client named \"" + clientName + "\" [" + client.remoteAddress() + "] a packet: \n" + PacketSerializer.toString(packet));
-                }
-            }else{
-                client.close();
-                clients.remove(clientName);
+        if (client.isOpen() && client.isWritable()) {
+            if (PacketQuery.isDebugEnabled()) {
+                LOGGER.info("Sending packet to client \"{}\" ({}): {}", name, client.remoteAddress(), PacketSerializer.toString(packet));
             }
+            client.writeAndFlush(PacketSerializer.toString(packet) + System.lineSeparator());
+            return true;
+        } else {
+            CONNECTED_CLIENTS.remove(name);
+            client.close();
+        }
+
+        return false;
+    }
+
+    public void disconnectClient(String clientName) {
+        if (CONNECTED_CLIENTS.containsKey(clientName)) {
+            CONNECTED_CLIENTS.get(clientName).close();
+            //we do not need to remove the client from the list because that will happen in the handlerRemoved method
         }
     }
 
-    /**
-     * @apiNote Made for internal use, no need to call this method
-     * @see Server#disconnectClient(String)  Server.disconnectClient()
-     */
-    public static void disconnectClient(String clientName){
-        if(clients.containsKey(clientName)){
-            clients.get(clientName).close();
-            clients.remove(clientName);
-        }
-    }
+    public void disconnectAllClientsOnStop() {
+        RUNNING = false;
 
-    /**
-     * @apiNote Made for internal use, no need to call this method
-     */
-    public static void disconnectAllClientsOnStop(){
-        waiting.forEach((client, address) -> client.close());
-        clients.forEach((name, client) -> client.close());
+        ArrayList<ChannelFuture> closeFutures = new ArrayList<>();
+        QUEUED_CLIENTS.forEach((queuedClient, address) -> closeFutures.add(queuedClient.close()));
+        CONNECTED_CLIENTS.forEach((name, client) -> closeFutures.add(client.close()));
 
-        try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()
-        ) {
-            executor.execute(() -> {
-                try {
-                    Thread.sleep(3000);
-                } catch (InterruptedException e) {
-                    QueryLogger.error("An error occurred, please report it: " + QueryLogger.link);
-                    e.getCause().printStackTrace();
-                }
+        closeFutures.forEach(future -> {
+            try {
+                future.await();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        });
+        QUEUED_CLIENTS.clear();
+        CONNECTED_CLIENTS.clear();
 
-                waiting.clear();
-                //no need to run clients.clear() because all clients get removed from the list when they disconnect
-            });
-        }
+        LOGGER.info("All clients were disconnected");
     }
 
 }

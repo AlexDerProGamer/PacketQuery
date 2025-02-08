@@ -2,35 +2,33 @@ package adpg.packetquery.packet;
 
 import java.util.ArrayList;
 
-@SuppressWarnings("unused")
 public class PacketBuilder {
 
     private final ArrayList<String> content = new ArrayList<>();
 
     /**
-     * Add a field in the packet that can be read using {@link Packet#read() Packet.read}
+     * Write to the next field in the packet
      * <br>
-     * You can add as many fields as you want
+     * There is no field limit
      */
-    public PacketBuilder write(String message){
+    public PacketBuilder write(String message) {
         content.add(message);
         return this;
     }
 
     /**
-     * Add a specific field in the packet that can be read using {@link Packet#read() Packet.read}
+     * Write to a specific field in the packet
      * <br>
-     * You can add as many fields as you want
+     * There is no field limit
      */
-    public PacketBuilder writeAt(String message, int index){
+    public PacketBuilder writeAt(int index, String message) {
         content.add(index, message);
         return this;
     }
 
-    /**
-     * @return The {@link Packet Packet} with the written fields
-     */
-    public Packet build(){
+    /// @return the {@link Packet Packet} with the written fields
+    public Packet build() {
         return new Packet(content);
     }
+
 }

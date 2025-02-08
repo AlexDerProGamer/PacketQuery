@@ -1,85 +1,80 @@
 package adpg.packetquery.query.server;
 
 import adpg.packetquery.PacketQuery;
-import adpg.packetquery.logger.QueryLogger;
 import adpg.packetquery.packet.Packet;
-import adpg.packetquery.packet.PacketSerializer;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
+import org.jetbrains.annotations.ApiStatus;
+import org.jetbrains.annotations.Blocking;
 
 import java.util.ArrayList;
 
-@SuppressWarnings({"unused", "CallToPrintStackTrace"})
+import static adpg.packetquery.PacketQuery.LOGGER;
+
 public class Server {
 
-    private final EventLoopGroup bossGroup;
-    private final EventLoopGroup workerGroup;
+    private final EventLoopGroup BOSS_GROUP;
+    private final EventLoopGroup WORKER_GROUP;
+    private final ServerInitializer SERVER_INITIALIZER;
 
-    /**
-     * @apiNote Do NOT instantiate, use {@link PacketQuery#initServer(int) PacketQuery.initServer}
-     */
-    public Server(int port){
-        bossGroup = new NioEventLoopGroup();
-        workerGroup = new NioEventLoopGroup();
+
+    /// @see PacketQuery#initServer(int)
+    @ApiStatus.Internal
+    public Server(int port) {
+        BOSS_GROUP = new NioEventLoopGroup();
+        WORKER_GROUP = new NioEventLoopGroup();
+        SERVER_INITIALIZER = new ServerInitializer();
 
         try {
             ServerBootstrap bootstrap = new ServerBootstrap()
-                    .group(bossGroup, workerGroup)
+                    .group(BOSS_GROUP, WORKER_GROUP)
                     .channel(NioServerSocketChannel.class)
-                    .childHandler(new ServerInitializer());
+                    .childHandler(SERVER_INITIALIZER);
 
             bootstrap.bind(port).sync();
-            QueryLogger.info("Started Server on port " + port);
+            LOGGER.info("Started server on port {}", port);
         } catch (InterruptedException e) {
-            QueryLogger.error("An error occurred, please report it: " + QueryLogger.link);
-            e.getCause().printStackTrace();
+            throw new RuntimeException(e);
         }
     }
 
-    /**
-     * @return All names of the Clients connected to the Server
-     */
-    public ArrayList<String> getConnectedClients(){
-        return new ArrayList<>(ServerHandler.clients.keySet());
+    /// @return a {@link ArrayList<String>} with all client names
+    public ArrayList<String> getConnectedClients() {
+        return new ArrayList<>(SERVER_INITIALIZER.SERVER_HANDLER.CONNECTED_CLIENTS.keySet());
     }
 
     /**
-     * Sends a packet to a Client
-     * @param clientName The name of the Client (case-sensitive)
+     * Sends a {@link Packet} to a client
+     * @param client The name of the client (case-sensitive)
+     * @return if the packet was sent
      */
-    public void sendPacketToClient(String clientName, Packet packet){
-        if(!ServerHandler.clients.containsKey(clientName)){
-            QueryLogger.warn("There is no client named \"" + clientName + "\" connected, not sending packet:\n" + PacketSerializer.toString(packet));
-            return;
+    public boolean sendPacketToClient(String client, Packet packet) {
+        if (!SERVER_INITIALIZER.SERVER_HANDLER.CONNECTED_CLIENTS.containsKey(client)) {
+            LOGGER.error("Failed to send packet: No client named \"{}\" is connected", client);
+            return false;
         }
 
-        ServerHandler.sendPacketToClient(clientName, packet);
-
-        if(PacketQuery.isDebugEnabled()){
-            QueryLogger.info("Sent a packet to the Client named \"" + clientName + "\" [" + ServerHandler.clients.get(clientName).remoteAddress() + "]: \n" + PacketSerializer.toString(packet));
-        }
+        return SERVER_INITIALIZER.SERVER_HANDLER.sendPacketToClient(client, packet);
     }
 
     /**
-     * Disconnects a specific Client
-     * @param clientName The name of the Client (case-sensitive)
+     * Disconnects a specific client
+     * @param client The name of the client (case-sensitive)
      */
-    public void disconnectClient(String clientName){
-        ServerHandler.disconnectClient(clientName);
+    public void disconnectClient(String client) {
+        SERVER_INITIALIZER.SERVER_HANDLER.disconnectClient(client);
     }
 
-    /**
-     * Stops the Server and disconnects all Clients
-     */
-    public void stop(){
-        ServerHandler.disconnectAllClientsOnStop();
+    /// Stops the server and waits until all clients are disconnected
+    @Blocking
+    public void stop() {
+        LOGGER.info("Stopping server");
 
-        bossGroup.shutdownGracefully();
-        workerGroup.shutdownGracefully();
-
-        QueryLogger.info("Stopping Server...");
+        SERVER_INITIALIZER.SERVER_HANDLER.disconnectAllClientsOnStop();
+        BOSS_GROUP.shutdownGracefully();
+        WORKER_GROUP.shutdownGracefully();
     }
 
 }

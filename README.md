@@ -66,7 +66,7 @@ client.sendPacketToServer(packet);
 @Override
 public void onClientMessageReceive(String clientName, Packet packet) {
     String channel = packet.read();
-    if(channel.equals("my.test.message")){
+    if (channel.equals("my.test.message")) {
         String message = packet.read();
         String message2 = packet.read();
         System.out.println(clientName + ": " + message + ", " + message2);
@@ -84,7 +84,7 @@ PacketQuery.addClientMessageListener(new ClientPacketMessageListener());
 @Override
 public void onServerMessageReceive(Packet packet) {
     String channel = packet.read();
-    if(channel.equals("my.test.message")){
+    if (channel.equals("my.test.message")) {
         String message = packet.read();
         String message2 = packet.read();
         System.out.println("Server: " + message + ", " + message2);
@@ -96,3 +96,6 @@ The class needs to implement ServerPacketMessageEvent
 ```java
 PacketQuery.addServerMessageListener(new ServerPacketMessageListener());
 ```
+
+## ToDo
+- [ ] add a way to reconnect to the server after a lost connection

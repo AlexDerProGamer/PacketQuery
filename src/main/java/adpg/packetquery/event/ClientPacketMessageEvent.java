@@ -3,15 +3,16 @@ package adpg.packetquery.event;
 import adpg.packetquery.packet.Packet;
 
 /**
- * Use this event to read received packets from clients
+ * Use this event to listen to client packets<br>
+ * {@code client -> server}
  */
 public interface ClientPacketMessageEvent {
 
     /**
-     * Use this event to read received packets from clients
-     * @param clientName The name of the client that sent the packet
-     * @param packet The packet sent to this server
+     * Use this event to listen to client packets<br>
+     * {@code client -> server}
+     * @param packet The packet sent to the server
      */
-    void onClientMessageReceive(String clientName, Packet packet);
+    void onClientMessageReceive(String client, Packet packet);
 
 }

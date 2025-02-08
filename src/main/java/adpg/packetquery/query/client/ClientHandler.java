@@ -1,32 +1,40 @@
 package adpg.packetquery.query.client;
 
 import adpg.packetquery.PacketQuery;
-import adpg.packetquery.logger.QueryLogger;
 import adpg.packetquery.packet.Packet;
 import adpg.packetquery.packet.PacketSerializer;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 
-@SuppressWarnings({"RedundantThrows", "CallToPrintStackTrace"})
+import static adpg.packetquery.PacketQuery.LOGGER;
+
 public class ClientHandler extends SimpleChannelInboundHandler<String> {
 
     @Override
-    protected void channelRead0(ChannelHandlerContext context, String message) throws Exception {
-        //packet handling
-        Packet packet = PacketSerializer.fromString(message);
-        if(PacketQuery.isDebugEnabled()){
-            QueryLogger.info("Server sent the Client a packet: \n" + PacketSerializer.toString(packet));
-        }
-
-        PacketQuery.fireServerMessageEvent(packet);
+    public void exceptionCaught(ChannelHandlerContext context, Throwable cause) {
+        LOGGER.warn("Lost connection to the server");
+        context.close();
     }
 
     @Override
-    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-        //super.exceptionCaught(ctx, cause);
-        ctx.close();
-        QueryLogger.error("An error occurred, please report it: " + QueryLogger.link);
-        cause.printStackTrace();
+    public void handlerAdded(ChannelHandlerContext context) {
+        LOGGER.info("Successfully connected to the server");
+    }
+
+    @Override
+    public void handlerRemoved(ChannelHandlerContext context) {
+        LOGGER.info("Disconnected from the server");
+    }
+
+    @Override
+    protected void channelRead0(ChannelHandlerContext context, String message) {
+        Packet packet = PacketSerializer.fromString(message);
+
+        if (PacketQuery.isDebugEnabled()) {
+            LOGGER.info("Received a packet from the server: {}", message);
+        }
+
+        PacketQuery.fireServerMessageEvent(packet);
     }
 
 }

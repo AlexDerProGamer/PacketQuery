@@ -1,45 +1,35 @@
 package adpg.packetquery.packet;
 
-import adpg.packetquery.logger.QueryLogger;
-import com.fasterxml.jackson.annotation.JsonAutoDetect;
-import com.fasterxml.jackson.annotation.PropertyAccessor;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.*;
+import java.util.Base64;
 
-@SuppressWarnings({"unused", "CallToPrintStackTrace"})
 public class PacketSerializer {
 
-    private static final ObjectMapper mapper = new ObjectMapper().setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY);
+    public static String toString(Packet packet) {
+        String serializedPacket;
 
-    /**
-     * @apiNote Made for internal use, no need to call this method
-     */
-    public static String toString(Packet packet){
-        String serializedPacket = null;
-
-        try {
-            serializedPacket = mapper.writeValueAsString(packet);
-        } catch (JsonProcessingException e) {
-            QueryLogger.error("An error occurred, please report it: " + QueryLogger.link);
-            e.getCause().printStackTrace();
+        try (ByteArrayOutputStream byteArrayOut = new ByteArrayOutputStream(); ObjectOutputStream objectOut = new ObjectOutputStream(byteArrayOut)) {
+            packet.resetReader();
+            objectOut.writeObject(packet);
+            serializedPacket = Base64.getEncoder().encodeToString(byteArrayOut.toByteArray());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
 
         return serializedPacket;
     }
 
-    /**
-     * @apiNote Made for internal use, no need to call this method
-     */
-    public static Packet fromString(String serializedPacket){
-        Packet packet = null;
+    public static Packet fromString(String serializedPacket) {
+        Packet packet;
 
-        try {
-            packet = mapper.readValue(serializedPacket, Packet.class);
-        } catch (JsonProcessingException e) {
-            QueryLogger.error("An error occurred, please report it: " + QueryLogger.link);
-            e.getCause().printStackTrace();
+        byte [] data = Base64.getDecoder().decode(serializedPacket);
+        try (ObjectInputStream objectIn = new ObjectInputStream(new ByteArrayInputStream(data))) {
+            packet = (Packet) objectIn.readObject();
+        } catch (IOException | ClassNotFoundException e) {
+            throw new RuntimeException(e);
         }
 
+        packet.resetReader();
         return packet;
     }
 
