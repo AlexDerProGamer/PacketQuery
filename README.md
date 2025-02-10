@@ -1,9 +1,7 @@
 # PacketQuery
-A simple event driven [Netty](https://github.com/netty/netty) based messaging API that sends messages through custom packet objects written in Java 21.\
-These packets are serialized and deserialized using [Jackson](https://github.com/FasterXML/jackson-databind).
-Uses [TinyLog](https://github.com/tinylog-org/tinylog) for logging messages.
+A simple event driven [Netty](https://github.com/netty/netty) based messaging API that sends messages through custom packet objects.\
 
-Note: Only localhost connections are supported
+Note: Only localhost connections are supported\
 Requires Java 21
 
 ## Add as Dependency
