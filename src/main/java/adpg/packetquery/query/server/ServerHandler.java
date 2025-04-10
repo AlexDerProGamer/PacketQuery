@@ -2,6 +2,7 @@ package adpg.packetquery.query.server;
 
 import adpg.packetquery.PacketQuery;
 import adpg.packetquery.packet.Packet;
+import adpg.packetquery.packet.PacketBuilder;
 import adpg.packetquery.packet.PacketSerializer;
 import io.netty.channel.*;
 import org.jetbrains.annotations.Nullable;
@@ -87,6 +88,11 @@ public class ServerHandler extends SimpleChannelInboundHandler<String> {
                     LOGGER.info("New client \"{}\" ({}) connected to the server", name, remoteAddress);
                     QUEUED_CLIENTS.remove(client);
                     CONNECTED_CLIENTS.put(name, client);
+
+                    // send a notification that the client successfully connected to the server
+                    sendPacketToClient(name, new PacketBuilder()
+                            .write("packetquery.server.connected")
+                            .build());
                 } else {
                     QUEUED_CLIENTS.remove(client);
                     client.close();

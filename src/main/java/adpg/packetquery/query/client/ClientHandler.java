@@ -18,7 +18,7 @@ public class ClientHandler extends SimpleChannelInboundHandler<String> {
 
     @Override
     public void handlerAdded(ChannelHandlerContext context) {
-        LOGGER.info("Successfully connected to the server");
+        LOGGER.info("Connecting to the server...");
     }
 
     @Override
@@ -30,7 +30,11 @@ public class ClientHandler extends SimpleChannelInboundHandler<String> {
     protected void channelRead0(ChannelHandlerContext context, String message) {
         Packet packet = PacketSerializer.fromString(message);
 
-        if (PacketQuery.isDebugEnabled()) {
+        // don't use #read to avoid incrementing the packet reading index
+        String channel = packet.readAt(0);
+        if (channel != null && channel.equals("packetquery.server.connected")) {
+            LOGGER.info("Successfully connected to the server");
+        } else if (PacketQuery.isDebugEnabled()) {
             LOGGER.info("Received a packet from the server: {}", message);
         }
 
